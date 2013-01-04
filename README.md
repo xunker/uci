@@ -1,6 +1,6 @@
 # Ruby UCI - A Universal Chess Interface for Ruby
 
-The UCI gem allows for a much more ruby-like why of communicating with chess
+The UCI gem allows for a much more ruby-like way of communicating with chess
 engines that support the UCI protocol.
 
 ## Installation
@@ -19,16 +19,15 @@ And then execute:
 
 ## Usage
 
-### NOTE: No Chess engines are included. You must install an appropriate
-UCI-compatible engine first.
+### NOTE: No Chess engines are included. You must install an appropriate UCI-compatible engine first.
 
 ```ruby
  require 'rubygems'
  require 'uci'
 
   uci = Uci.new(
-    :engine => :stockfish,
-    :engine_path => '/Users/mnielsen/tmp/Stockfish/src/stockfish',
+    :engine => :stockfish, # optional
+    :engine_path => '/usr/local/bin/stockfish',
   )
 
   while !uci.ready? do
@@ -36,9 +35,9 @@ UCI-compatible engine first.
     sleep(1)
   end
 
-
   uci.new_game!
 
+  # this loop will make the engine play against itself.
   loop do
     puts "Move ##{uci.moves.size+1}."
     puts uci.fenstring # print fenstring of current board.
