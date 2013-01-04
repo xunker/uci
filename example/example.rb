@@ -6,7 +6,7 @@ puts "Connecting to engine."
 uci = Uci.new(
   :engine => :stockfish,
   :engine_path => '/Users/mnielsen/tmp/Stockfish/src/stockfish',
-  :debug => true,
+  :debug => false,
   # :options => {
   #   "Hash" => 32,
   #   "NalimovCache" => 1,
@@ -27,10 +27,10 @@ raise "Not a new game? Strange..." unless uci.new_game?
 
 
 loop do
-  puts "Move #{uci.moves.size}."
+  puts "\nMove #{uci.moves.size}."
   puts uci.fenstring # return fenstring of current board.
   puts uci.board     # return ascii layout of current board.
   # puts uci.bestmove
   uci.go!
-  sleep(0.25)
+  sleep(0.1)
 end

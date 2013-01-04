@@ -46,6 +46,27 @@ And then execute:
     sleep(0.25)
   end
  ```
+## Caveats
+
+#### Unix-style Line endings are assumed.
+
+Current version assumes unix-style ("\n") line endings. That means running this under MS-DOS or Windows may barf.
+
+#### Very limited command set.
+
+Very few commands of the total UCI command set are currently supported. they are:
+
+* Starting a new game
+* Setting positions
+* Getting best move
+* Setting options
+
+It DOES NOT _yet_ support:
+
+* 'uci' command
+* ponder mode / infinite mode
+* ponderhit
+* registrations
 
 ## Contributing
 

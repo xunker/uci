@@ -4,6 +4,8 @@ class EngineNotExecutableError < StandardError; end
 class EngineNameMismatch < StandardError; end
 class ReturnStringError < StandardError; end
 class UnknownNotationExtensionError < StandardError; end
+class NoMoveError < StandardError; end
+class NoPieceAtPositionError < StandardError; end
 
 require 'open3'
 class Uci
@@ -57,10 +59,15 @@ class Uci
   end
 
   def bestmove
+    @info = nil
     write_to_engine('go')
     move_string = read_from_engine
-    if bestmove = move_string.match(/^bestmove\s([a-h][1-8][a-h][1-8])([a-z]{1}?)\s/)
-      return bestmove[1..-1].join
+    if move_string =~ /^bestmove/
+      if bestmove = move_string.match(/^bestmove\s([a-h][1-8][a-h][1-8])([a-z]{1}?)\s/)
+        return bestmove[1..-1].join
+      elsif move_string =~ /^bestmove\s\(none\)\s/
+        raise NoMoveError, "No more moves: #{move_string}"
+      end
     else
       raise ReturnStringError, "Expected return to begin with 'bestmove', but got '#{move_string}'"
     end
@@ -75,7 +82,7 @@ class Uci
       if extended == 'q'
         place = move.split('')[2..3].join
         p, player = get_piece(place)
-        puts "\t\t\t\tqueen promotion? #{p} #{player}"
+        puts "queen promotion: #{p} #{player}" if @debug
         place_piece(player, :queen, place)
       else
         raise UnknownNotationExtensionError, "Unknown notation extension: #{bm}"
@@ -102,13 +109,19 @@ class Uci
     rank = RANKS[position.to_s.downcase.split('').first]
     file = position.downcase.split('').last.to_i-1
     piece = @board[file][rank]
-    raise "No piece at #{position}!" if piece.nil?
+    raise NoPieceAtPositionError, "No piece at #{position}!" if piece.nil?
     player = if piece =~ /^[A-Z]$/
       :white
     else
       :black
     end
     [piece_name(piece), player]
+  end
+
+  def piece_at?(position)
+    rank = RANKS[position.to_s.downcase.split('').first]
+    file = position.downcase.split('').last.to_i-1
+    !!@board[file][rank]
   end
 
   def piece_name(p)
@@ -139,10 +152,6 @@ class Uci
     icon = piece.to_s.split('').first
     (player == :black ? icon.downcase! : icon.upcase!)
     @board[file_index][rank_index] = icon
-  end
-
-  def remove_piece(position)
-    raise NotImplementedError
   end
 
   def fenstring
@@ -202,13 +211,28 @@ protected
 
   def read_from_engine(strip_cr=true)
     puts "\tread_from_engine" if @debug
-    response = @engine_stdout.readline
+    while (response = @engine_stdout.readline) =~ /^info/
+      parse_info_and_store(response)
+    end
     puts "\t\tENGINE:\t#{response}" if @debug
     if strip_cr && response.split('').last == "\n"
       response.chop
     else
       response
     end
+  end
+
+  def parse_info_and_store(message)
+    return unless message =~ /^info/
+    @info = message.slice(5, message.size-5)
+  end
+
+  def info
+    @info || nil
+  end
+
+  def info?
+    !info.nil?
   end
 
 private
@@ -265,5 +289,4 @@ private
     end
     true
   end
-
 end
