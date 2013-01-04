@@ -68,6 +68,12 @@ It DOES NOT _yet_ support:
 * ponderhit
 * registrations
 
+## To-Do before gem release
+
+* Accept engine options in constructor
+* Setting a new game board via fenstring
+* Specs
+
 ## Contributing
 
 Ruby UCI needs support for more features and to be tested with more chess
