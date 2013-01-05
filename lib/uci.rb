@@ -9,7 +9,7 @@ class NoPieceAtPositionError < StandardError; end
 
 require 'open3'
 class Uci
-  attr_reader :moves
+  attr_reader :moves, :debug
   VERSION = "0.0.1"
 
   RANKS = {
@@ -19,28 +19,12 @@ class Uci
 
   def initialize(options = {})
     require_keys!(options, [:engine_path])
-    @debug = options[:debug]
+    set_debug(options)
     reset_board!
-    if !options[:options].nil?
-      raise NotImplementedError, "options passing not implemented yet"
-    end
 
-    unless File.exist?(options[:engine_path])
-      raise EngineNotFoundError, "Engine not found at #{options[:engine_path]}"
-    end
-    unless File.executable?(options[:engine_path])
-      raise EngineNotExecutableError, "Engine at #{options[:engine_path]} is not executable"
-    end
-    @engine_stdin, @engine_stdout, @engine_stderr = Open3.popen3(options[:engine_path])
-    engine_name = read_from_engine.split(/\s/).first.downcase.to_sym
-    if options[:engine]
-      unless options[:engine] == engine_name
-        raise EngineNameMismatch, "Expected engine to be #{engine_name} but got #{options[:engine]}"
-      end
-    else
-      options[:engine] = engine_name
-    end
-
+    check_engine(options)
+    open_engine_connection(options[:engine_path])
+    get_engine_name(options)
   end
 
   def ready?
@@ -278,6 +262,38 @@ private
     place_piece(:black, :bishop, "f8")
     place_piece(:black, :king, "e8")
     place_piece(:black, :queen, "d8")
+  end
+
+  def check_engine(options)
+    if !options[:options].nil?
+      raise NotImplementedError, "options passing not implemented yet"
+    end
+
+    unless File.exist?(options[:engine_path])
+      raise EngineNotFoundError, "Engine not found at #{options[:engine_path]}"
+    end
+    unless File.executable?(options[:engine_path])
+      raise EngineNotExecutableError, "Engine at #{options[:engine_path]} is not executable"
+    end
+  end
+
+  def set_debug(options)
+    @debug = !!options[:debug]
+  end
+
+  def open_engine_connection(engine_path)
+    @engine_stdin, @engine_stdout, @engine_stderr = Open3.popen3(engine_path)
+  end
+
+  def get_engine_name(options)
+    engine_name = read_from_engine.split(/\s/).first.downcase.to_sym
+    if options[:engine]
+      unless options[:engine] == engine_name
+        raise EngineNameMismatch, "Expected engine to be #{engine_name} but got #{options[:engine]}"
+      end
+    else
+      options[:engine] = engine_name
+    end
   end
 
   def require_keys!(hash, *required_keys)
