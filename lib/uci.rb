@@ -37,6 +37,7 @@ class Uci
 
     check_engine(options)
     open_engine_connection(options[:engine_path])
+    set_engine_options(options[:options]) if !options[:options].nil?
     new_game!
   end
 
@@ -230,6 +231,12 @@ class Uci
 
 protected
 
+  def set_engine_options(options)
+    options.each do |k,v|
+      write_to_engine("setoption name #{k} value #{v}")
+    end
+  end
+
   def write_to_engine(message, send_cr=true)
     puts "\twrite_to_engine" if @debug
     puts "\t\tME:    \t'#{message}'" if @debug
@@ -301,10 +308,6 @@ private
   end
 
   def check_engine(options)
-    if !options[:options].nil?
-      raise NotImplementedError, "options passing not implemented yet"
-    end
-
     unless File.exist?(options[:engine_path])
       raise EngineNotFoundError, "Engine not found at #{options[:engine_path]}"
     end

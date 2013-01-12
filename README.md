@@ -79,7 +79,6 @@ It DOES NOT _yet_ support:
 
 ## To-Do before gem release
 
-* Accept engine options in constructor
 * Setting a new game board via fenstring
 * Specs
 
