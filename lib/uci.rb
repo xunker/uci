@@ -11,6 +11,7 @@ class EngineResignError < NoMoveError; end
 class NoPieceAtPositionError < UciError; end
 class UnknownBestmoveSyntax < UciError; end
 class FenFormatError < UciError; end
+class BoardLockedError < UciError; end
 
 require 'open3'
 require 'io/wait'
@@ -76,24 +77,6 @@ class Uci
     end
   end
 
-  def go!
-    bm = bestmove
-    (move, extended) = *bm.match(/^([a-h][1-8][a-h][1-8])([a-z]{1}?)$/)[1..2]
-    @moves << move+extended
-    move_piece(move)
-    if extended.to_s.size > 0
-      if extended == 'q'
-        place = move.split('')[2..3].join
-        p, player = get_piece(place)
-        puts "queen promotion: #{p} #{player}" if @debug
-        place_piece(player, :queen, place)
-      else
-        raise UnknownNotationExtensionError, "Unknown notation extension: #{bm}"
-      end
-    end
-    send_position_to_engine
-  end
-
   def send_position_to_engine
     if @fen
       write_to_engine("position fen #{@fen}")
@@ -104,11 +87,33 @@ class Uci
     end
   end
 
-  def move_piece(position)
+
+  def go!
+    send_position_to_engine
+    move_piece(bestmove)
+  end
+
+  def move_piece(move_string)
     raise BoardLockedError, "Board was set from FEN string" if @fen
-    start_pos = position.downcase.split('')[0..1].join
-    end_pos = position.downcase.split('')[2..3].join
+    (move, extended) = *move_string.match(/^([a-h][1-8][a-h][1-8])([a-z]{1}?)$/)[1..2]
+
+    start_pos = move.downcase.split('')[0..1].join
+    end_pos = move.downcase.split('')[2..3].join
     (piece, player) = get_piece(start_pos)
+
+    place_piece(player, piece, end_pos)
+    clear_position(start_pos)
+
+    if extended.to_s.size > 0
+      if extended == 'q'
+        place = move.split('')[2..3].join
+        p, player = get_piece(place)
+        log("queen promotion: #{p} #{player}")
+        place_piece(player, :queen, place)
+      else
+        raise UnknownNotationExtensionError, "Unknown notation extension: #{bm}"
+      end
+    end
 
     # detect castling
     if piece == :king
@@ -129,8 +134,7 @@ class Uci
       end
     end
 
-    place_piece(player, piece, end_pos)
-    clear_position(start_pos)
+    @moves << move_string
   end
 
   def moves
@@ -265,8 +269,8 @@ protected
   end
 
   def write_to_engine(message, send_cr=true)
-    puts "\twrite_to_engine" if @debug
-    puts "\t\tME:    \t'#{message}'" if @debug
+    log("\twrite_to_engine")
+    log("\t\tME:    \t'#{message}'")
     if send_cr && message.split('').last != "\n"
       @engine_stdin.puts message
     else
@@ -275,11 +279,11 @@ protected
   end
 
   def read_from_engine(strip_cr=true)
-    puts "\tread_from_engine" if @debug
+    log("\tread_from_engine")
     response = ""
     while @engine_stdout.ready?
       unless (response = @engine_stdout.readline) =~ /^info/
-        puts "\t\tENGINE:\t'#{response}'" if @debug
+        log("\t\tENGINE:\t'#{response}'")
       end
     end
     if strip_cr && response.split('').last == "\n"
@@ -342,6 +346,10 @@ private
 
   def set_debug(options)
     @debug = !!options[:debug]
+  end
+
+  def log(message)
+    puts "DEBUG: #{message}" if @debug
   end
 
   def open_engine_connection(engine_path)

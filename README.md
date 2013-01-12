@@ -25,10 +25,7 @@ And then execute:
  require 'rubygems'
  require 'uci'
 
-  uci = Uci.new(
-    :engine => :stockfish, # optional
-    :engine_path => '/usr/local/bin/stockfish',
-  )
+  uci = Uci.new( :engine_path => '/usr/local/bin/stockfish' )
 
   while !uci.ready? do
     puts "Engine isn't ready yet, sleeping..."
@@ -76,11 +73,6 @@ It DOES NOT _yet_ support:
 * ponder mode / infinite mode
 * ponderhit
 * registrations
-
-## To-Do before gem release
-
-* Setting a new game board via fenstring
-* Specs
 
 ## Contributing
 
