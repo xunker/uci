@@ -51,6 +51,7 @@ class Uci
   def new_game!
     write_to_engine('ucinewgame')
     reset_move_record!
+    @fen = nil
   end
 
   def new_game?
@@ -102,12 +103,17 @@ class Uci
   end
 
   def send_position_to_engine
-    position_str = "position #{startpos}"
-    position_str << " moves #{@moves.join(' ')}" unless @moves.empty?
-    write_to_engine(position_str)
+    if @fen
+      write_to_engine("position fen #{@fen}")
+    else
+      position_str = "position startpos"
+      position_str << " moves #{@moves.join(' ')}" unless @moves.empty?
+      write_to_engine(position_str)
+    end
   end
 
   def move_piece(position)
+    raise BoardLockedError, "Board was set from FEN string" if @fen
     start_pos = position.downcase.split('')[0..1].join
     end_pos = position.downcase.split('')[2..3].join
     (piece, player) = get_piece(start_pos)
@@ -177,12 +183,14 @@ class Uci
   end
 
   def clear_position(position)
+    raise BoardLockedError, "Board was set from FEN string" if @fen
     rank = RANKS[position.to_s.downcase.split('').first]
     file = position.downcase.split('').last.to_i-1
     @board[file][rank] = nil
   end
 
   def place_piece(player, piece, position)
+    raise BoardLockedError, "Board was set from FEN string" if @fen
     rank_index = RANKS[position.downcase.split('').first]
 
     file_index = position.split('').last.to_i-1
@@ -190,11 +198,6 @@ class Uci
     (player == :black ? icon.downcase! : icon.upcase!)
     @board[file_index][rank_index] = icon
   end
-
-  def startpos
-    @startpos || 'startpos'
-  end
-
 
   def set_board(fen)
     # rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1
@@ -214,8 +217,8 @@ class Uci
         end
       end
     end
-    @startpos = fen
     new_game!
+    @fen = fen
     send_position_to_engine
   end
 
