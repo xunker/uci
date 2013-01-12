@@ -1,30 +1,42 @@
+
+class UciError < StandardError; end
 class MissingRequiredHashKeyError < StandardError; end
-class EngineNotFoundError < StandardError; end
-class EngineNotExecutableError < StandardError; end
-class EngineNameMismatch < StandardError; end
-class ReturnStringError < StandardError; end
-class UnknownNotationExtensionError < StandardError; end
-class NoMoveError < StandardError; end
-class NoPieceAtPositionError < StandardError; end
+class EngineNotFoundError < UciError; end
+class EngineNotExecutableError < UciError; end
+class EngineNameMismatch < UciError; end
+class ReturnStringError < UciError; end
+class UnknownNotationExtensionError < UciError; end
+class NoMoveError < UciError; end
+class EngineResignError < NoMoveError; end
+class NoPieceAtPositionError < UciError; end
+class UnknownBestmoveSyntax < UciError; end
 
 require 'open3'
+require 'io/wait'
 class Uci
   attr_reader :moves, :debug
+  attr_accessor :movetime
   VERSION = "0.0.1"
 
   RANKS = {
     'a' => 0, 'b' => 1, 'c' => 2, 'd' => 3,
     'e' => 4, 'f' => 5, 'g' => 6, 'h' => 7
   }
+  CASTLING = {
+    "white" => false,
+    "black" => false
+  }
 
   def initialize(options = {})
-    require_keys!(options, [:engine_path])
+    options = default_options.merge(options)
+    require_keys!(options, [:engine_path, :movetime])
+    @movetime = options[:movetime]
+
     set_debug(options)
     reset_board!
 
     check_engine(options)
     open_engine_connection(options[:engine_path])
-    get_engine_name(options)
   end
 
   def ready?
@@ -42,15 +54,24 @@ class Uci
     moves.empty?
   end
 
+  def castled?(player)
+    !!CASTLING[player]
+  end
+
   def bestmove
-    @info = nil
-    write_to_engine('go')
-    move_string = read_from_engine
+    write_to_engine("go movetime #{@movetime}")
+    until (move_string = read_from_engine).to_s.size > 1
+      sleep(0.25)
+    end
     if move_string =~ /^bestmove/
-      if bestmove = move_string.match(/^bestmove\s([a-h][1-8][a-h][1-8])([a-z]{1}?)\s/)
-        return bestmove[1..-1].join
+      if move_string =~ /^bestmove\sa1a1/ # not documented behaviour from UCI
+        raise EngineResignError, "Engine Resigns. Check Mate? #{move_string}"
       elsif move_string =~ /^bestmove\s\(none\)\s/
         raise NoMoveError, "No more moves: #{move_string}"
+      elsif bestmove = move_string.match(/^bestmove\s([a-h][1-8][a-h][1-8])([a-z]{1}?)/)
+        return bestmove[1..-1].join
+      else
+        raise UnknownBestmoveSyntax, "Engine returned a 'bestmove' that I don't understand: #{move_string}"
       end
     else
       raise ReturnStringError, "Expected return to begin with 'bestmove', but got '#{move_string}'"
@@ -81,6 +102,27 @@ class Uci
     start_pos = position.downcase.split('')[0..1].join
     end_pos = position.downcase.split('')[2..3].join
     (piece, player) = get_piece(start_pos)
+
+    # detect castling
+    if piece == :king
+      start_rank = start_pos.split('')[1]
+      start_file = start_pos.split('')[0].ord
+      end_file = end_pos.split('')[0].ord
+      if(start_file - end_file).abs > 1
+        CASTLING[player] = true
+        # assume the engine knows the rook is present
+        if start_file < end_file # king's rook
+          place_piece(player, :rook, "f#{start_rank}")
+          clear_position("h#{start_rank}")
+        elsif end_file < start_file # queen's rook
+          place_piece(player, :rook, "d#{start_rank}")
+          clear_position("a#{start_rank}")
+        else
+          raise "Unknown castling behviour!"
+        end
+      end
+    end
+
     place_piece(player, piece, end_pos)
     clear_position(start_pos)
   end
@@ -93,7 +135,9 @@ class Uci
     rank = RANKS[position.to_s.downcase.split('').first]
     file = position.downcase.split('').last.to_i-1
     piece = @board[file][rank]
-    raise NoPieceAtPositionError, "No piece at #{position}!" if piece.nil?
+    if piece.nil?
+      raise NoPieceAtPositionError, "No piece at #{position}!"
+    end
     player = if piece =~ /^[A-Z]$/
       :white
     else
@@ -185,7 +229,7 @@ protected
 
   def write_to_engine(message, send_cr=true)
     puts "\twrite_to_engine" if @debug
-    puts "\t\tME:    \t#{message}" if @debug
+    puts "\t\tME:    \t'#{message}'" if @debug
     if send_cr && message.split('').last != "\n"
       @engine_stdin.puts message
     else
@@ -195,28 +239,17 @@ protected
 
   def read_from_engine(strip_cr=true)
     puts "\tread_from_engine" if @debug
-    while (response = @engine_stdout.readline) =~ /^info/
-      parse_info_and_store(response)
+    response = ""
+    while @engine_stdout.ready?
+      unless (response = @engine_stdout.readline) =~ /^info/
+        puts "\t\tENGINE:\t'#{response}'" if @debug
+      end
     end
-    puts "\t\tENGINE:\t#{response}" if @debug
     if strip_cr && response.split('').last == "\n"
       response.chop
     else
       response
     end
-  end
-
-  def parse_info_and_store(message)
-    return unless message =~ /^info/
-    @info = message.slice(5, message.size-5)
-  end
-
-  def info
-    @info || nil
-  end
-
-  def info?
-    !info.nil?
   end
 
 private
@@ -285,17 +318,6 @@ private
     @engine_stdin, @engine_stdout, @engine_stderr = Open3.popen3(engine_path)
   end
 
-  def get_engine_name(options)
-    engine_name = read_from_engine.split(/\s/).first.downcase.to_sym
-    if options[:engine]
-      unless options[:engine] == engine_name
-        raise EngineNameMismatch, "Expected engine to be #{engine_name} but got #{options[:engine]}"
-      end
-    else
-      options[:engine] = engine_name
-    end
-  end
-
   def require_keys!(hash, *required_keys)
     required_keys.flatten.each do |required_key|
       if !hash.keys.include?(required_key)
@@ -304,5 +326,9 @@ private
       end
     end
     true
+  end
+
+  def default_options
+    { :movetime => 100 }
   end
 end

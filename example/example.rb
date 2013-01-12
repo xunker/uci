@@ -4,9 +4,9 @@ require './lib/uci'
 
 puts "Connecting to engine."
 uci = Uci.new(
-  :engine => :stockfish,
-  :engine_path => '/Users/mnielsen/tmp/Stockfish/src/stockfish',
-  :debug => false,
+  # :engine_path => '/Users/mnielsen/tmp/Stockfish/src/stockfish',
+  :engine_path => '/Users/mnielsen/Downloads/fruit231-mac',
+  :debug => true,
   # :options => {
   #   "Hash" => 32,
   #   "NalimovCache" => 1,
@@ -16,7 +16,7 @@ uci = Uci.new(
 
 while !uci.ready? do
   puts "Engine isn't ready yet, sleeping..."
-  sleep(1)
+  sleep(0.25)
 
 end
 puts "Engine is ready."
@@ -30,7 +30,5 @@ loop do
   puts "\nMove #{uci.moves.size}."
   puts uci.fenstring # return fenstring of current board.
   puts uci.board     # return ascii layout of current board.
-  # puts uci.bestmove
   uci.go!
-  sleep(0.1)
 end
