@@ -6,12 +6,12 @@ describe Uci do
     Uci.any_instance.stub(:check_engine)
     Uci.any_instance.stub(:open_engine_connection)
     Uci.any_instance.stub(:get_engine_name)
+    Uci.any_instance.stub(:new_game!)
   end
 
   subject do
     Uci.new(
-      :engine => :stockfish,
-      :engine_path => '/Users/mnielsen/tmp/Stockfish/src/stockfish',
+      :engine_path => '/usr/bin/stockfish',
       :debug => true
     )
   end
@@ -54,23 +54,6 @@ describe Uci do
         subject.stub!(:read_from_engine).and_return('no')
 
         subject.ready?.should be_false
-      end
-    end
-  end
-
-  describe "#new_game!" do
-    context "fenstring passed" do
-      it "should reise a NotImplementedError" do
-        lambda { subject.new_game!('xxx') }.should raise_exception NotImplementedError
-      end
-    end
-
-    context "no fenstring passed" do
-      it "should tell the engine to reset the game and reset the local board" do
-        subject.should_receive(:write_to_engine).with('ucinewgame')
-        subject.should_receive(:reset_move_record!)
-
-        subject.new_game!
       end
     end
   end

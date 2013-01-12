@@ -23,10 +23,6 @@ class Uci
     'a' => 0, 'b' => 1, 'c' => 2, 'd' => 3,
     'e' => 4, 'f' => 5, 'g' => 6, 'h' => 7
   }
-  CASTLING = {
-    "white" => false,
-    "black" => false
-  }
 
   def initialize(options = {})
     options = default_options.merge(options)
@@ -56,10 +52,6 @@ class Uci
 
   def new_game?
     moves.empty?
-  end
-
-  def castled?(player)
-    !!CASTLING[player]
   end
 
   def bestmove
@@ -124,7 +116,6 @@ class Uci
       start_file = start_pos.split('')[0].ord
       end_file = end_pos.split('')[0].ord
       if(start_file - end_file).abs > 1
-        CASTLING[player] = true
         # assume the engine knows the rook is present
         if start_file < end_file # king's rook
           place_piece(player, :rook, "f#{start_rank}")
