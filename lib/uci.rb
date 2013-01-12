@@ -37,6 +37,7 @@ class Uci
 
     check_engine(options)
     open_engine_connection(options[:engine_path])
+    new_game!
   end
 
   def ready?

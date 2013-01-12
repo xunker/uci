@@ -35,18 +35,27 @@ And then execute:
     sleep(1)
   end
 
-  uci.new_game!
-
   # this loop will make the engine play against itself.
   loop do
     puts "Move ##{uci.moves.size+1}."
     puts uci.fenstring # print fenstring of current board.
     puts uci.board     # print ascii layout of current board.
     uci.go!
-    sleep(0.25)
   end
  ```
+
+## Supported Engines
+
+In theory it can support any UCI (except for conditions outlined in the 'caveats' section).  It has been tested with:
+
+* Stockfish (Jan 11 2013 Github source)
+* Fruit 2.3.1 (Mac)
+
 ## Caveats
+
+#### No move checking
+
+This gem assumes the engine knows what it's doing. If the gem wishes to place a illegal move it will be accepted.
 
 #### Unix-style Line endings are assumed.
 
