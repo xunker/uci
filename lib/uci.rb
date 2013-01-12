@@ -64,9 +64,11 @@ class Uci
       sleep(0.25)
     end
     if move_string =~ /^bestmove/
-      if move_string =~ /^bestmove\sa1a1/ # not documented behaviour from UCI
+      if move_string =~ /^bestmove\sa1a1/ # fruit and rybka
         raise EngineResignError, "Engine Resigns. Check Mate? #{move_string}"
-      elsif move_string =~ /^bestmove\s\(none\)\s/
+      elsif move_string =~ /^bestmove\sNULL/ # robbolita
+        raise NoMoveError, "No more moves: #{move_string}"
+      elsif move_string =~ /^bestmove\s\(none\)\s/ #stockfish
         raise NoMoveError, "No more moves: #{move_string}"
       elsif bestmove = move_string.match(/^bestmove\s([a-h][1-8][a-h][1-8])([a-z]{1}?)/)
         return bestmove[1..-1].join

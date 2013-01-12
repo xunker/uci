@@ -4,8 +4,8 @@ require './lib/uci'
 
 puts "Connecting to engine."
 uci = Uci.new(
-  # :engine_path => '/Users/mnielsen/tmp/Stockfish/src/stockfish',
-  :engine_path => '/Users/mnielsen/Downloads/fruit231-mac',
+  :engine_path => '/Users/mnielsen/tmp/Stockfish/src/stockfish',
+  # :engine_path => '/Users/mnielsen/Downloads/fruit231-mac',
   :debug => true,
   # :options => {
   #   "Hash" => 32,
