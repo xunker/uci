@@ -10,6 +10,7 @@ class NoMoveError < UciError; end
 class EngineResignError < NoMoveError; end
 class NoPieceAtPositionError < UciError; end
 class UnknownBestmoveSyntax < UciError; end
+class FenFormatError < UciError; end
 
 require 'open3'
 require 'io/wait'
@@ -34,6 +35,7 @@ class Uci
 
     set_debug(options)
     reset_board!
+    set_startpos!
 
     check_engine(options)
     open_engine_connection(options[:engine_path])
@@ -46,8 +48,7 @@ class Uci
     read_from_engine == "readyok"
   end
 
-  def new_game!(fenstring = nil)
-    raise NotImplementedError, "fenstring for new board not here yet" if fenstring
+  def new_game!
     write_to_engine('ucinewgame')
     reset_move_record!
   end
@@ -97,7 +98,11 @@ class Uci
         raise UnknownNotationExtensionError, "Unknown notation extension: #{bm}"
       end
     end
-    position_str = "position startpos"
+    send_position_to_engine
+  end
+
+  def send_position_to_engine
+    position_str = "position #{startpos}"
     position_str << " moves #{@moves.join(' ')}" unless @moves.empty?
     write_to_engine(position_str)
   end
@@ -184,6 +189,34 @@ class Uci
     icon = piece.to_s.split('').first
     (player == :black ? icon.downcase! : icon.upcase!)
     @board[file_index][rank_index] = icon
+  end
+
+  def startpos
+    @startpos || 'startpos'
+  end
+
+
+  def set_board(fen)
+    # rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1
+    fen_pattern = /^[a-zA-Z0-9\/]+\s[bw]\s[kqKQ-]+\s[a-h0-8-]+\s\d+\s\d+$/
+    unless fen =~ fen_pattern
+      raise FenFormatError, "Fenstring not correct: #{fen}. Expected to match #{fen_pattern}"
+    end
+    reset_board!
+    fen.split(' ').first.split('/').reverse.each_with_index do |rank, rank_index|
+      file_index = 0
+      rank.split('').each do |file|
+        if file.to_i > 0
+          file_index += file.to_i
+        else
+          @board[rank_index][file_index] = file
+          file_index += 1
+        end
+      end
+    end
+    @startpos = fen
+    new_game!
+    send_position_to_engine
   end
 
   def fenstring
@@ -276,9 +309,6 @@ private
         @board[x] << nil
       end
     end
-
-    set_startpos!
-
     reset_move_record!
   end
 

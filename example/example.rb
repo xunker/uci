@@ -4,8 +4,8 @@ require './lib/uci'
 
 puts "Connecting to engine."
 uci = Uci.new(
-  # :engine_path => '/Users/mnielsen/tmp/Stockfish/src/stockfish',
-  :engine_path => '/Users/mnielsen/Downloads/fruit231-mac',
+  :engine_path => '/Users/mnielsen/tmp/Stockfish/src/stockfish',
+  # :engine_path => '/Users/mnielsen/Downloads/fruit231-mac',
   :debug => true,
   :options => {
     "Hash" => 32,
@@ -21,6 +21,8 @@ while !uci.ready? do
 end
 puts "Engine is ready."
 
+fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR"
+uci.set_board(fen, "e2e4")
 loop do
   puts "\nMove #{uci.moves.size}."
   puts uci.fenstring # return fenstring of current board.
