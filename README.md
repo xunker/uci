@@ -22,7 +22,6 @@ And then execute:
 ### NOTE: No Chess engines are included. You must install an appropriate UCI-compatible engine first.
 
 ```ruby
- require 'rubygems'
  require 'uci'
 
   uci = Uci.new( :engine_path => '/usr/local/bin/stockfish' )
@@ -35,15 +34,14 @@ And then execute:
   # this loop will make the engine play against itself.
   loop do
     puts "Move ##{uci.moves.size+1}."
-    puts uci.fenstring # print fenstring of current board.
-    puts uci.board     # print ascii layout of current board.
+    puts uci.board # print ascii layout of current board.
     uci.go!
   end
  ```
 
 ## Supported Engines
 
-In theory it can support any UCI (except for conditions outlined in the 'caveats' section).  It has been tested with:
+In theory it can support any UCI-compatible (except for conditions outlined in the 'caveats' section).  It has been tested with:
 
 * Stockfish (Jan 11 2013 Github source)
 * Fruit 2.3.1 (Mac)

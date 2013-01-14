@@ -1,20 +1,9 @@
-
-class UciError < StandardError; end
-class MissingRequiredHashKeyError < StandardError; end
-class EngineNotFoundError < UciError; end
-class EngineNotExecutableError < UciError; end
-class EngineNameMismatch < UciError; end
-class ReturnStringError < UciError; end
-class UnknownNotationExtensionError < UciError; end
-class NoMoveError < UciError; end
-class EngineResignError < NoMoveError; end
-class NoPieceAtPositionError < UciError; end
-class UnknownBestmoveSyntax < UciError; end
-class FenFormatError < UciError; end
-class BoardLockedError < UciError; end
+# The UCI gem allows for a much more ruby-like way of communicating with chess
+# engines that support the UCI protocol.
 
 require 'open3'
 require 'io/wait'
+
 class Uci
   attr_reader :moves, :debug
   attr_accessor :movetime
@@ -33,6 +22,18 @@ class Uci
     'q' => :queen
   }
 
+  # make a new connection to a UCI engine
+  #
+  # ==== Options
+  #
+  # Required options:
+  # * :engine_path - path to the engine executable
+  #
+  # Optional options:
+  # * :debug - enable debugging messages - true /false
+  # * :name - name of the engine - string
+  # * :movetime - max amount of time the engine can "think" in ms - default 100
+  # * :options - hash to pass to the engine for configuration
   def initialize(options = {})
     options = default_options.merge(options)
     require_keys!(options, [:engine_path, :movetime])
@@ -49,11 +50,14 @@ class Uci
     new_game!
   end
 
+  # true if engine is ready, false if not yet ready
   def ready?
     write_to_engine('isready')
     read_from_engine == "readyok"
   end
 
+  # send "ucinewgame" to engine, reset interal board to standard starting
+  # layout
   def new_game!
     write_to_engine('ucinewgame')
     reset_board!
@@ -61,10 +65,15 @@ class Uci
     @fen = nil
   end
 
+  # true if no moves have been recorded yet
   def new_game?
     moves.empty?
   end
 
+  # ask the chess engine what the "best move" is given the current state of
+  # the internal chess board. This does *not* actiually execute a move, it
+  # simply queries for and returns what the engine would consider to be the
+  # best option available.
   def bestmove
     write_to_engine("go movetime #{@movetime}")
     until (move_string = read_from_engine).to_s.size > 1
@@ -87,6 +96,9 @@ class Uci
     end
   end
 
+  # write board position information to the UCI engine, either the starting
+  # position + move log or the current FEN string, depending on how the board
+  # was set up.
   def send_position_to_engine
     if @fen
       write_to_engine("position fen #{@fen}")
@@ -97,12 +109,23 @@ class Uci
     end
   end
 
-
+  # tell the engine what the current board layout it, get its best move AND
+  # execute that move on the current board.
   def go!
     send_position_to_engine
     move_piece(bestmove)
   end
 
+  # move a piece on the current interal board.
+  #
+  # ==== Attributes
+  # * move_string = algebraic standard notation of the chess move. Shorthand not allowed.
+  #
+  # Simple movement:              a2a3
+  # Castling (king's rook white): e1g1
+  # Pawn promomition (to Queen):  a7a8q
+  #
+  # Note that there is minimal rule checking here, illegal moves will be executed.
   def move_piece(move_string)
     raise BoardLockedError, "Board was set from FEN string" if @fen
     (move, extended) = *move_string.match(/^([a-h][1-8][a-h][1-8])([a-z]{1}?)$/)[1..2]
@@ -147,10 +170,20 @@ class Uci
     @moves << move_string
   end
 
+  # return the current movement log
   def moves
     @moves
   end
 
+  # get the details of a piece at the current position
+  # raises NoPieceAtPositionError if position is unoccupied
+  #
+  # returns array of [:piece, :player]
+  #
+  # ==== Example
+  #
+  # > get_piece("a2")
+  # => [:pawn, :white]
   def get_piece(position)
     rank = RANKS[position.to_s.downcase.split('').first]
     file = position.downcase.split('').last.to_i-1
@@ -166,20 +199,37 @@ class Uci
     [piece_name(piece), player]
   end
 
+  # returns a boolean if a position is occupied
+  #
+  # ==== Example
+  #
+  # > piece_at?("a2")
+  # => true
+  # > piece_at?("a3")
+  # => false
   def piece_at?(position)
     rank = RANKS[position.to_s.downcase.split('').first]
     file = position.downcase.split('').last.to_i-1
     !!@board[file][rank]
   end
 
+  # Returns the piece name OR the piece icon, depending on that was passes.
+  #
+  # ==== Example
+  #
+  # > piece_name(:n)
+  # => :knight
+  # > piece_name(:queen)
+  # => "q"
   def piece_name(p)
     if p.class.to_s == "Symbol"
-      (p == :knight ? :night : p).to_s.split('').first
+      (p == :knight ? :night : p).to_s.downcase.split('').first
     else
       PIECES[p.downcase]
     end
   end
 
+  # clear a position on the board, regardless of occupied state
   def clear_position(position)
     raise BoardLockedError, "Board was set from FEN string" if @fen
     rank = RANKS[position.to_s.downcase.split('').first]
@@ -187,6 +237,12 @@ class Uci
     @board[file][rank] = nil
   end
 
+  # place a piece on the board, regardless of occupied state
+  #
+  # ==== Attributes
+  # * player - symbol: :black or :white
+  # * piece - symbol: :pawn, :rook, etc
+  # * position - a2, etc
   def place_piece(player, piece, position)
     raise BoardLockedError, "Board was set from FEN string" if @fen
     rank_index = RANKS[position.downcase.split('').first]
@@ -197,6 +253,12 @@ class Uci
     @board[file_index][rank_index] = icon
   end
 
+  # set the board using Forsyth–Edwards Notation (FEN), *LONG* format including
+  # move, castling, etc.
+  #
+  # ==== Attributes
+  # * fen - rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1 (Please
+  # see http://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
   def set_board(fen)
     # rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1
     fen_pattern = /^[a-zA-Z0-9\/]+\s[bw]\s[kqKQ-]+\s[a-h0-8-]+\s\d+\s\d+$/
@@ -220,6 +282,8 @@ class Uci
     send_position_to_engine
   end
 
+  # return the state of the interal board in a FEN (Forsyth–Edwards Notation)
+  # string, *SHORT* format (no castling info, move, etc)
   def fenstring
     fen = []
     (@board.size-1).downto(0).each do |rank_index|
@@ -251,6 +315,21 @@ class Uci
     fen.join('/')
   end
 
+  # ASCII-art representation of the current internal board.
+  #
+  # ==== Example
+  #
+  # > puts board
+  #   ABCDEFGH
+  # 8 r.bqkbnr
+  # 7 pppppppp
+  # 6 n.......
+  # 5 ........
+  # 4 .P......
+  # 3 ........
+  # 2 P.PPPPPP
+  # 1 RNBQKBNR
+  #
   def board(empty_square_char = '.')
     board_str = "  ABCDEFGH\n"
     (@board.size-1).downto(0).each do |rank_index|
@@ -263,6 +342,8 @@ class Uci
     board_str
   end
 
+
+  # return the current engine name
   def engine_name
     @engine_name
   end
@@ -385,3 +466,17 @@ private
     { :movetime => 100 }
   end
 end
+
+class UciError < StandardError; end
+class MissingRequiredHashKeyError < StandardError; end
+class EngineNotFoundError < UciError; end
+class EngineNotExecutableError < UciError; end
+class EngineNameMismatch < UciError; end
+class ReturnStringError < UciError; end
+class UnknownNotationExtensionError < UciError; end
+class NoMoveError < UciError; end
+class EngineResignError < NoMoveError; end
+class NoPieceAtPositionError < UciError; end
+class UnknownBestmoveSyntax < UciError; end
+class FenFormatError < UciError; end
+class BoardLockedError < UciError; end
