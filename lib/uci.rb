@@ -115,13 +115,13 @@ class Uci
     clear_position(start_pos)
 
     if extended.to_s.size > 0
-      if extended == 'q'
+      if %w[q r b n].include?(extended)
         place = move.split('')[2..3].join
         p, player = get_piece(place)
-        log("queen promotion: #{p} #{player}")
-        place_piece(player, :queen, place)
+        log("pawn promotion: #{p} #{player}")
+        place_piece(player, piece_name(extended), place)
       else
-        raise UnknownNotationExtensionError, "Unknown notation extension: #{bm}"
+        raise UnknownNotationExtensionError, "Unknown notation extension: #{move_string}"
       end
     end
 

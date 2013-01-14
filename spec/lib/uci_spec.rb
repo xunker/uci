@@ -210,25 +210,76 @@ describe Uci do
   end
 
   describe "#move_piece" do
+    before(:each) do
+      # sanity
+      subject.piece_at?("a2").should be_true
+      subject.piece_at?("a3").should be_false
+    end
     it "should raise an error if the board was set from a fen string" do
       subject.stub!(:send_position_to_engine)
       subject.set_board("r1bqkbnr/pppppppp/n7/8/1P6/8/P1PPPPPP/RNBQKBNR b KQkq - 0 1")
-      lambda { subject.clear_position("a1") }.should raise_exception BoardLockedError
+      lambda { subject.move_piece("a2a3") }.should raise_exception BoardLockedError
     end
     it "should move pieces from one position to another" do
-      pending
+      piece = subject.get_piece("a2")
+      subject.move_piece("a2a3")
+      piece.should == subject.get_piece("a3")
+      subject.piece_at?("a2").should be_false
+    end
+    it 'it should overwrite pieces if one is moved atop another' do
+      # note this is an illegal move
+      piece = subject.get_piece("a1")
+      subject.move_piece("a1a2")
+      piece.should == subject.get_piece("a2")
+      subject.piece_at?("a1").should be_false
     end
     it "should raise an exception if the source position has no piece" do
-      pending
+      lambda { subject.move_piece("a3a4") }.should raise_exception NoPieceAtPositionError
     end
-    it "should promote a pawn at the correct rank with the correct notation" do
-      pending
+    it "should promote a pawn to a queen at the correct rank with the correct notation" do
+      subject.move_piece("a2a8q")
+      subject.get_piece("a8").should == [:queen, :white]
     end
-    it "should properly understand castling" do
-      pending
+    it "should promote a pawn to a rook at the correct rank with the correct notation" do
+      subject.move_piece("a2a8r")
+      subject.get_piece("a8").should == [:rook, :white]
     end
+    it "should promote a pawn to a knight at the correct rank with the correct notation" do
+      subject.move_piece("a2a8n")
+      subject.get_piece("a8").should == [:knight, :white]
+    end
+    it "should promote a pawn to a bishop at the correct rank with the correct notation" do
+      subject.move_piece("a2a8b")
+      subject.get_piece("a8").should == [:bishop, :white]
+    end
+    it "should raise an exception if promotion to unallowed piece" do
+      lambda { subject.move_piece("a2a8k") }.should raise_exception UnknownNotationExtensionError
+    end
+    it "should properly understand castling, white king's rook" do
+      subject.move_piece("e1g1")
+      subject.get_piece("f1").should == [:rook, :white]
+      subject.get_piece("g1").should == [:king, :white]
+    end
+    it "should properly understand castling, white queens's rook" do
+      subject.move_piece("e1c1")
+      subject.get_piece("d1").should == [:rook, :white]
+      subject.get_piece("c1").should == [:king, :white]
+    end
+    it "should properly understand castling, black king's rook" do
+      subject.move_piece("e8g8")
+      subject.get_piece("f8").should == [:rook, :black]
+      subject.get_piece("g8").should == [:king, :black]
+    end
+    it "should properly understand castling, black queens's rook" do
+      subject.move_piece("e8c8")
+      subject.get_piece("d8").should == [:rook, :black]
+      subject.get_piece("c8").should == [:king, :black]
+    end
+
     it "should append the move to the move log" do
-      pending
+      subject.moves.should be_empty
+      subject.move_piece("a2a3")
+      subject.moves.should == ["a2a3"]
     end
   end
 
