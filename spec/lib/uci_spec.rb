@@ -210,22 +210,74 @@ describe Uci do
   end
 
   describe "#move_piece" do
-    pending
+    it "should raise an error if the board was set from a fen string" do
+      subject.stub!(:send_position_to_engine)
+      subject.set_board("r1bqkbnr/pppppppp/n7/8/1P6/8/P1PPPPPP/RNBQKBNR b KQkq - 0 1")
+      lambda { subject.clear_position("a1") }.should raise_exception BoardLockedError
+    end
+    it "should move pieces from one position to another" do
+      pending
+    end
+    it "should raise an exception if the source position has no piece" do
+      pending
+    end
+    it "should promote a pawn at the correct rank with the correct notation" do
+      pending
+    end
+    it "should properly understand castling" do
+      pending
+    end
+    it "should append the move to the move log" do
+      pending
+    end
   end
 
   describe "#new_game!" do
-    pending
+    it "should tell the engine a new game is set" do
+      pending
+    end
+    it "should reset the internal board" do
+      pending
+    end
+    it "should set the pieces in a startpos" do
+      pending
+    end
   end
 
   describe "#bestmove" do
-    pending
+    it "should write the bestmove command to the engine" do
+      pending
+    end
+    it "should detect various forfeit notations" do
+      pending
+    end
+    it "should raise and exception if the bestmove notation is not understood" do
+      pending
+    end
+    it "shpould raise and exception if the returned command was not prefixed with 'bestmove'" do
+      pending
+    end
   end
 
   describe "#send_position_to_engine" do
-    pending
+    context "board was set from fen" do
+      it "should send a 'position fen' command" do
+        pending
+      end
+    end
+    context "the board is set from startpos" do
+      it "should set a 'position startpo' command followed by the move log" do
+        pending
+      end
+    end
   end
 
   describe "#go!" do
-    pending
+    it "should send the currentn position to the engine" do
+      pending
+    end
+    it "should update the current board with the result of 'bestmove'" do
+      pending
+    end
   end
 end
