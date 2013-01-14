@@ -24,6 +24,14 @@ class Uci
     'a' => 0, 'b' => 1, 'c' => 2, 'd' => 3,
     'e' => 4, 'f' => 5, 'g' => 6, 'h' => 7
   }
+  PIECES = {
+    'p' => :pawn,
+    'r' => :rook,
+    'n' => :knight,
+    'b' => :bishop,
+    'k' => :king,
+    'q' => :queen
+  }
 
   def initialize(options = {})
     options = default_options.merge(options)
@@ -166,16 +174,9 @@ class Uci
 
   def piece_name(p)
     if p.class.to_s == "Symbol"
-      p.to_s.split('').first
+      (p == :knight ? :night : p).to_s.split('').first
     else
-      {
-        'p' => :pawn,
-        'r' => :rook,
-        'n' => :night,
-        'b' => :bishop,
-        'k' => :king,
-        'q' => :queen
-      }[p.downcase]
+      PIECES[p.downcase]
     end
   end
 
@@ -191,7 +192,7 @@ class Uci
     rank_index = RANKS[position.downcase.split('').first]
 
     file_index = position.split('').last.to_i-1
-    icon = piece.to_s.split('').first
+    icon = (piece == :knight ? :night : piece).to_s.split('').first
     (player == :black ? icon.downcase! : icon.upcase!)
     @board[file_index][rank_index] = icon
   end
