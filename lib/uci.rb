@@ -35,6 +35,7 @@ class Uci
     set_startpos!
 
     check_engine(options)
+    set_engine_name(options)
     open_engine_connection(options[:engine_path])
     set_engine_options(options[:options]) if !options[:options].nil?
     new_game!
@@ -47,7 +48,8 @@ class Uci
 
   def new_game!
     write_to_engine('ucinewgame')
-    reset_move_record!
+    reset_board!
+    set_startpos!
     @fen = nil
   end
 
@@ -260,6 +262,10 @@ class Uci
     board_str
   end
 
+  def engine_name
+    @engine_name
+  end
+
 protected
 
   def set_engine_options(options)
@@ -279,7 +285,7 @@ protected
   end
 
   def read_from_engine(strip_cr=true)
-    log("\tread_from_engine")
+    log("\tread_from_engine") #XXX
     response = ""
     while @engine_stdout.ready?
       unless (response = @engine_stdout.readline) =~ /^info/
@@ -349,7 +355,7 @@ private
   end
 
   def log(message)
-    puts "DEBUG: #{message}" if @debug
+    puts "DEBUG (#{engine_name}): #{message}" if @debug
   end
 
   def open_engine_connection(engine_path)
@@ -364,6 +370,14 @@ private
       end
     end
     true
+  end
+
+  def set_engine_name(options)
+    if options[:name].to_s.size > 1
+      @engine_name = options[:name]
+    else
+      @engine_name = options[:engine_path].split('/').last
+    end
   end
 
   def default_options
