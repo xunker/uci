@@ -359,7 +359,7 @@ private
   end
 
   def open_engine_connection(engine_path)
-    @engine_stdin, @engine_stdout, @engine_stderr = Open3.popen3(engine_path)
+    @engine_stdin, @engine_stdout = Open3.popen2e(engine_path)
   end
 
   def require_keys!(hash, *required_keys)
