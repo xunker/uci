@@ -7,7 +7,7 @@ require 'io/wait'
 class Uci
   attr_reader :moves, :debug
   attr_accessor :movetime
-  VERSION = "0.0.1"
+  VERSION = "0.0.2"
 
   RANKS = {
     'a' => 0, 'b' => 1, 'c' => 2, 'd' => 3,
