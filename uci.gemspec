@@ -10,7 +10,7 @@ Gem::Specification.new do |gem|
   gem.email         = ["xunker@pyxidis.org"]
   gem.description   = %q{Ruby library for the Universal Chess Interface (UCI)}
   gem.summary       = %q{Ruby library for the Universal Chess Interface (UCI)}
-  gem.homepage      = ""
+  gem.homepage      = "https://github.com/xunker/uci"
 
   gem.required_ruby_version = '>= 1.9.1'
   gem.files         = `git ls-files`.split($/)
