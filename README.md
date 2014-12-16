@@ -236,7 +236,3 @@ any new code inside of a new branch:
 Before committing and pushing code, please make sure all existing tests pass
 and that all new code has tests. Once that is verified, please push the changes
 and create a new pull request.
-
-
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/xunker/uci/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
-
